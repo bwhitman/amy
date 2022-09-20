@@ -4,6 +4,7 @@ body {
     margin:0;
 }
 
+/*
 h1, h2 {
     font-family: 'Quicksand', Helvetica, Sans-serif;
     background-color:#D90268;
@@ -11,7 +12,7 @@ h1, h2 {
     margin:0;
     color:white;
 }
-
+*/
 #startStop {
     text-align: center;
     border-radius: 0.5em;
@@ -37,4 +38,27 @@ img {
 #footer {
     width: 100%;
     text-align: center;
+}
+
+.seqrow {
+  display: flex;
+}
+.seqtitle {
+  width:10px;
+}
+.LEDTitle {
+  width:10px;
+}
+
+.LEDrow {
+  display: flex;
+}
+
+.LED {
+  border: 0.5px solid gray;
+  border-radius: 2px;
+  width: 16px;
+  height: 10px;
+  margin: 1.7px;
+  background: lightgray;
 }
