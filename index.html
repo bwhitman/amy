@@ -1,0 +1,396 @@
+<!-- thank you to https://github.com/elf-audio/cpp-to-webaudio-example -->
+<!doctype html>
+<html lang="en-us">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AMY drum machine example</title>
+        <link href="https://fonts.googleapis.com/css?family=Quicksand:500" rel="stylesheet">
+        <link href="style.css" rel="stylesheet">
+        <script type="text/javascript" src="amy.js"></script>
+        <script language="javascript">
+    
+    var web_audio_buffer = null;
+    var amy_play_message = null;
+    var amy_start_web = null;
+    var startDate = new Date();
+    var startTime = startDate.getTime();
+    // you can only start calling c++ functions once emscripten's "runtime" has started
+    Module.onRuntimeInitialized = function() {
+        web_audio_buffer = Module.cwrap(
+            'web_audio_buffer', 'number', ['number', 'number']
+        );
+        amy_play_message = Module.cwrap(
+            'amy_play_message', null, ['string']
+        );
+        amy_start_web = Module.cwrap(
+            'amy_start_web', null, ['number']
+        );
+    }
+
+
+    var dataHeap = null;
+    var dataPtr = null;
+
+    var data = new Float32Array();
+
+    // l and r are float arrays for the left and right channels that need to be filled
+    function audioCallback(l) {
+        // lazy loading of the audio buffer we use to talk to c++/emscripten
+        if(dataHeap == null) {
+            data = new Float32Array(l.length);
+            // Get data byte size, allocate memory on Emscripten heap, and get pointer
+            var nDataBytes = data.length * data.BYTES_PER_ELEMENT;
+            dataPtr = Module._malloc(nDataBytes);
+
+            // Copy data to Emscripten heap (directly accessed from Module.HEAPU8)
+            dataHeap = new Uint8Array(Module.HEAPU8.buffer, dataPtr, nDataBytes);
+            dataHeap.set(new Uint8Array(data.buffer));
+        }
+
+        // now we actually call the C++
+        web_audio_buffer(dataHeap.byteOffset, l.length);
+
+        // turn the emscripten heap array to something we can work with in javascript
+        // allocating on the audio thread, I know!
+        var result = new Float32Array(dataHeap.buffer, dataHeap.byteOffset, data.length);
+
+        // deinterleave the result
+        for(i = 0; i < l.length; i++) {
+            l[i] = result[i];
+        }
+    }
+
+
+var audioRunning = false;
+var scriptNode = null;
+var source = null;
+var audioCtx = null;
+
+function setupAudio(fn) {
+  // Create AudioContext and buffer source
+  var AudioContext = window.AudioContext // Default
+    || window.webkitAudioContext // Safari and old versions of Chrome
+    || false; 
+    
+    if (!AudioContext) {
+        // Do whatever you want using the Web Audio API
+        alert("Sorry, but the Web Audio API is not supported by your browser.");
+    }
+  audioCtx = new AudioContext();
+  source = audioCtx.createBufferSource();
+
+  // buff size, ins, outs
+  scriptNode = audioCtx.createScriptProcessor(256, 0, 1);
+  scriptNode.onaudioprocess = function(audioProcessingEvent) {
+    fn(audioProcessingEvent.outputBuffer.getChannelData(0)); 
+  };
+}
+function millis() {
+    var date_now = new Date (); 
+    var time_now = date_now.getTime (); 
+    var time_diff = time_now - startTime; 
+    return time_diff;
+    //var seconds_elapsed = Math.floor ( time_diff  );
+}
+function reset() {
+    if(amy_started) {
+        var code = "S65";
+        amy_play_message(code); //+"t"+millis());
+    }
+}
+
+function send(osc) {
+    if(amy_started) {
+        var code = document.getElementById("code"+osc).value;
+        amy_play_message("v"+osc+code);//+"t"+millis());
+    }
+}
+var amy_started = false;
+function startAudio() {
+
+  amy_start_web();
+  amy_started = true;
+  send(0);
+  send(9);
+  send(18);
+  send(27);
+  send(36);
+  send(45);
+  beatID = setTimeout(beat, bpm_ms);
+  if(audioRunning) return;
+  setupAudio(audioCallback);
+  scriptNode.connect(audioCtx.destination);
+  source.start();
+  audioRunning = true;
+  document.getElementById("startStop").innerHTML = "stop AMY";
+  document.getElementById("startStop").href = "javascript: stopAudio();";
+}
+
+function stopAudio() {
+    audioRunning = false;
+    amy_started = false;
+    audioCtx.suspend().then(function() { 
+        document.getElementById("startStop").innerHTML = "start AMY";
+        document.getElementById("startStop").href = "javascript: startAudio();";
+    });
+
+}
+    </script>
+    </head>
+
+    <body>
+    <div id="content">
+        <P>
+        <a id="startStop" href="javascript: startAudio()">start AMY</a>
+        <a id="startStop" href="javascript: reset()">reset voices</a>
+
+        </P>
+
+        <h2>AMY drum blaster</h2>
+<div>
+  <div class="seqrow">
+    <div class="seqtitle">
+    </div>
+    <div id="row0">
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+    </div>
+    <input type='text' value='w8n50p14I4' id='code0'/><a href="javascript:send(0)">send</a>
+
+
+  </div>
+  <div class="seqrow">
+    <div class="seqtitle">
+    </div>
+    <div id="row1">
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+    </div>
+    <input type='text' value='w8n62p103I4' id='code9'/><a href="javascript:send(9)">send</a>
+
+  </div>
+  <div class="seqrow">
+    <div class="seqtitle">
+    </div>
+    <div id="row2">
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+    </div>
+    <input type='text' value='w8n46p14I4' id='code18'/><a href="javascript:send(18)">send</a>
+
+  </div>
+    <div class="seqrow">
+    <div class="seqtitle">
+    </div>
+    <div id="row3">
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+    </div>
+    <input type='text' value='w7p2n60' id='code27'/><a href="javascript:send(27)">send</a>
+
+  </div>
+    <div class="seqrow">
+    <div class="seqtitle">
+    </div>
+    <div id="row4">
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+    </div>
+    <input type='text' value='w7p6' id='code36'/><a href="javascript:send(36)">send</a>
+
+  </div>
+    <div class="seqrow">
+    <div class="seqtitle">
+    </div>
+    <div id="row5">
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+      <input type="checkbox"></input>
+    </div>
+    <input type='text' value='w7p5' id='code45'/><a href="javascript:send(45)">send</a>
+
+  </div>
+<div class="seqrow">
+    <div class="LEDTitle">
+      
+    </div>
+    <div class="LEDrow" id="LED-row">
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      <div class="LED"></div>
+      
+    </div>
+  </div>
+</div>
+<br>
+<button id="reset">Clear</button>
+<br> 
+<input id="bpm" type="range" min="21" max="240" step="1" value="120">
+<span id="bpmText">120</span> bpm
+</div>
+    </div>
+  </body>
+  <script language ="javascript"> 
+
+const row0 = document.getElementById("row0").children;
+const row1 = document.getElementById("row1").children;
+const row2 = document.getElementById("row2").children;
+const row3 = document.getElementById("row3").children;
+const row4 = document.getElementById("row4").children;
+const row5 = document.getElementById("row5").children;
+const LEDRow = document.getElementById("LED-row").children;
+const btnReset = document.getElementById("reset").addEventListener("click", e => {
+  for(let i = 0; i<=15; i++){
+    row0[i].checked=false;
+    row1[i].checked=false;
+    row2[i].checked=false;
+    row3[i].checked=false;
+    row4[i].checked=false;
+    row5[i].checked=false;
+  }
+}); 
+var bpm_ms = 125;
+const rngBpm = document.getElementById("bpm");
+rngBpm.oninput = function(){
+  bpm_ms = 1000.0 / 4 / ((this.value)/60.0)
+  txtBpm.innerText = this.value;
+};
+const txtBpm = document.getElementById("bpmText");
+
+// set up
+let audioInitialised = false;
+let index = 0;
+LEDRow[0].style = "background: red";
+
+
+var beatID;
+var beat_counter = 0;
+function beat() {
+    if(amy_started) {
+        beatID = setTimeout(beat, bpm_ms);
+        for(let i = 0; i <= 15; i++){
+            LEDRow[i].style.background = "lightgray";
+        }
+        LEDRow[beat_counter].style.background = "red";
+        if(row0[beat_counter].checked) {
+            amy_play_message("v0l1")
+        }
+        if(row1[beat_counter].checked) {
+            amy_play_message("v9l1")        
+        }
+        if(row2[beat_counter].checked) {
+            amy_play_message("v18l1")
+        }
+        if(row3[beat_counter].checked) {
+            amy_play_message("v27l1")
+        }
+        if(row4[beat_counter].checked) {
+            amy_play_message("v36l1")
+        }
+        if(row5[beat_counter].checked) {
+            amy_play_message("v45l1")
+        }
+        beat_counter = (beat_counter + 1) % 16
+    }
+}
+
+</script>
+</html>
