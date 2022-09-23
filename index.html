@@ -441,10 +441,12 @@ const txtRatio = document.getElementById("ratioText");
     function piano_down(note) {
         mess = "v54l1w8n" + note + "p" + curPatch + "I" + curRatio;
         if(amy_started) amy_play_message(mess);
+        console.log(mess);
     }
     function piano_up(note) {
         mess = "v54l0";
         if(amy_started) amy_play_message(mess);
+        console.log(mess);
     }
     function message_up(code) {
         var message = "";
