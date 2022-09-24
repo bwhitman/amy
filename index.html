@@ -422,7 +422,7 @@ Playback time ratio: <span id="ratioText">1.0</span>
 
   <script language ="javascript"> 
 
-var curPatch = 498;
+var curPatch = 0;
 const rngPatch = document.getElementById("patch");
 rngPatch.oninput = function(){
   txtPatch.innerText = this.value;
@@ -441,12 +441,10 @@ const txtRatio = document.getElementById("ratioText");
     function piano_down(note) {
         mess = "v54l1w8n" + note + "p" + curPatch + "I" + curRatio;
         if(amy_started) amy_play_message(mess);
-        console.log(mess);
     }
     function piano_up(note) {
         mess = "v54l0";
         if(amy_started) amy_play_message(mess);
-        console.log(mess);
     }
     function message_up(code) {
         var message = "";
