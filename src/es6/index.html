@@ -1,0 +1,108 @@
+<html lang="en-us">
+
+<head>
+  <script language="javascript" type="module" defer>
+
+    var amy_started = false;
+    var web_audio_buffer = null;
+    var amy_play_message = null;
+    var amy_start_web = null;
+    var callback = null
+
+    import('./amy-module.js').then(amy => {
+      const {Module} = amy
+      Module.onRuntimeInitialized = function () {
+        web_audio_buffer = Module.cwrap(
+          'web_audio_buffer', 'number', ['number', 'number']
+        );
+        amy_play_message = Module.cwrap(
+          'amy_play_message', null, ['string']
+        );
+        amy_start_web = Module.cwrap(
+          'amy_start_web', null, ['number']
+        );
+      }
+
+      var dataHeap = null;
+      var dataPtr = null;
+      var data = new Float32Array();
+
+      callback = function audioCallback(l) {
+        if (dataHeap == null || dataHeap.length == 0) {
+          data = new Float32Array(l.length);
+          var nDataBytes = data.length * data.BYTES_PER_ELEMENT;
+          dataPtr = Module._malloc(nDataBytes);
+          dataHeap = new Uint8Array(Module.HEAPU8.buffer, dataPtr, nDataBytes);
+          dataHeap.set(new Uint8Array(data.buffer));
+        }
+
+        web_audio_buffer(dataHeap.byteOffset, l.length);
+        var result = new Float32Array(dataHeap.buffer, dataHeap.byteOffset, data.length);
+
+        for (let i = 0; i < l.length; i++) {
+          l[i] = result[i];
+        }
+      }
+    })
+
+    var audioRunning = false;
+    var scriptNode = null;
+    var source = null;
+    var audioCtx = null;
+    let sts = 0
+
+    function setupAudio(fn) {
+
+      var AudioContext = window.AudioContext
+        || window.webkitAudioContext
+        || false;
+
+      if (!AudioContext) {
+        console.error("No Audio")
+        return
+      }
+      audioCtx = new AudioContext({
+        sampleRate: 48000
+      });
+      source = audioCtx.createBufferSource();
+      scriptNode = audioCtx.createScriptProcessor(256, 0, 1);
+      scriptNode.onaudioprocess = function (audioProcessingEvent) {
+        fn(audioProcessingEvent.outputBuffer.getChannelData(0));
+      };
+    }
+
+    function startAudio() {
+      amy_start_web();
+      amy_started = true;
+      if (audioRunning) return;
+      setupAudio(callback);
+      scriptNode.connect(audioCtx.destination);
+      source.start();
+      audioRunning = true;
+      setTimeout(() => {
+        console.log('started')
+        let mess = "v54l1w8n70p30";
+        amy_play_message(mess)
+      }, 500)
+    }
+
+    function stopAudio() {
+      audioRunning = false;
+      amy_started = false;
+      audioCtx.suspend().then(function () {
+        console.log('stopped')
+      });
+    }
+
+    document.getElementById("Start").addEventListener('click', () => startAudio())
+    document.getElementById("Stop").addEventListener('click', () => stopAudio())
+
+  </script>
+</head>
+
+<body>
+  <button id="Start">start AMY!</button>
+  <button id="Stop">Stop AMY!</button>
+</body>
+
+</html>
