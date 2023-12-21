@@ -30,6 +30,7 @@ class AmyTest:
 
   ref_dir = './tests/ref'
   test_dir = './tests/tst'
+  do_correlation = False
 
   def __init__(self):
     amy.restart()
@@ -45,16 +46,33 @@ class AmyTest:
     amy.write(samples, os.path.join(self.test_dir, name + '.wav'))
 
     ref_file = os.path.join(self.ref_dir, name + '.wav')
+    rms_x = dB(rms(samples))
+    msg = ('%-16s:' % name) + (' signal=%.1f dB' % rms_x)
+
     try:
       expected_samples, _ = wavread(ref_file)
+      num_samples = len(expected_samples)
 
-      rms_x = dB(rms(samples))
-      rms_n = dB(rms(samples - expected_samples))
-      print('%-16s:' % name, 'signal=%.1f dB' % rms_x, 'err=%.1f dB' % rms_n)
+      best_alignment = 0
+      if self.do_correlation:
+        best_alignment = (
+          np.argmax(np.correlate(np.mean(expected_samples, axis=1),
+                                 np.mean(samples, axis=1),
+                                 mode='same'))
+          - (num_samples // 2)
+        )
+        msg += ' alignment=%d' % best_alignment
+
+      indices = np.arange(np.abs(best_alignment), num_samples - np.abs(best_alignment))
+      residual = expected_samples[indices, :] - samples[indices - best_alignment, :]
+      rms_n = dB(rms(residual))
+      msg += ' err=%.1f dB' % rms_n
 
     except FileNotFoundError:
-      print('Unable to read', ref_file)
-  
+      msg += ' Unable to read', ref_file
+
+    print(msg)
+
 
 class TestSineOsc(AmyTest):
 
@@ -175,6 +193,10 @@ def main(argv):
   if len(argv) > 1:
     # Override location of reference files.
     AmyTest.ref_dir = argv[1]
+
+  if len(argv) > 2:
+    # Flag to search for best correlation
+    AmyTest.do_correlation = True
 
   for testClass in AmyTest.__subclasses__():
     test_object = testClass()
