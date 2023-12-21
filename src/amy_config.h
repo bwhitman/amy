@@ -105,8 +105,10 @@
 
 #define DELAY_LINE_LEN 512  // 11 ms @ 44 kHz
 
-#define AMY_BLOCK_SIZE 256       // buffer block size in samples
-#define BLOCK_SIZE_BITS 8    // log_2(BLOCK_SIZE)
+//#define AMY_BLOCK_SIZE 256       // buffer block size in samples
+//#define BLOCK_SIZE_BITS 8    // log_2(BLOCK_SIZE)
+#define AMY_BLOCK_SIZE 64
+#define BLOCK_SIZE_BITS 6
 
 // D is how close the sample gets to the clip limit before the nonlinearity engages.  
 // So D=0.1 means output is linear for -0.9..0.9, then starts clipping.

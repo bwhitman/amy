@@ -41,7 +41,7 @@ class AmyTest:
 
     self.run()
     
-    samples = amy.render(1.0)
+    samples = amy.render(44032 / 44100)
     amy.write(samples, os.path.join(self.test_dir, name + '.wav'))
 
     ref_file = os.path.join(self.ref_dir, name + '.wav')
