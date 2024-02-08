@@ -25,6 +25,9 @@ if (TARGET tinyusb_device)
             envelope.c
             filters.c
             oscillators.c
+            patches.c
+            log2_exp2.c
+            examples.c
             partials.c
             pcm.c
     )

@@ -8,7 +8,15 @@ void delay_ms(uint32_t ms) {
     while(amy_sysclock() - start < ms) usleep(THREAD_USLEEP);
 }
 
-void example_voice_alloc() {
+void reset(uint32_t time) {
+    struct event e = amy_default_event();
+    e.reset_osc = AMY_OSCS + 10;
+    e.time = time;
+    amy_add_event(e);
+}
+
+void example_voice_alloc(uint32_t start) {
+    reset(start);
     // alloc 2 juno voices, then try to alloc a dx7 voice on voice 0
     struct event e = amy_default_event();
     e.load_patch = 1;
@@ -52,66 +60,39 @@ void example_voice_alloc() {
 }
 
 
-void example_juno_chord() {
+void example_voice_chord(uint16_t patch, uint32_t start) {
+    reset(start);
+
     struct event e = amy_default_event();
-    e.load_patch = 1;
+    e.load_patch = patch;
+    e.time = start+10;
     strcpy(e.voices, "0,1,2");
     amy_add_event(e);
-    delay_ms(250);
 
     e = amy_default_event();
     e.velocity=0.2;
-
+    e.time += 250;
     strcpy(e.voices, "0");
     e.midi_note = 50;
     amy_add_event(e);
-    delay_ms(1000);
+    e.time += 1000;
 
     strcpy(e.voices, "1");
     e.midi_note = 54;
     amy_add_event(e);
-    delay_ms(1000);
+    e.time += 1000;
 
     strcpy(e.voices, "2");
     e.midi_note = 56;
     amy_add_event(e);
-    delay_ms(2000);
+    e.time += 1000;
     
     strcpy(e.voices, "0,1,2");
     e.velocity = 0;
     amy_add_event(e);
-    delay_ms(100);
+    e.time += 100;
 }   
 
-void example_dx7_chord() {
-    struct event e = amy_default_event();
-    e.load_patch = 136;
-    strcpy(e.voices, "0,1,2");
-    amy_add_event(e);
-
-    delay_ms(250);
-
-    e = amy_default_event();
-    e.velocity = 0.4;
-    
-    strcpy(e.voices, "0");
-    e.midi_note=54;
-    amy_add_event(e);
-
-    strcpy(e.voices, "1");
-    e.midi_note=56;
-    amy_add_event(e);
-
-    strcpy(e.voices, "2");
-    e.midi_note=50;
-    amy_add_event(e);
-
-    delay_ms(2000);
-    strcpy(e.voices, "0,1,2");
-    e.velocity = 0;
-    amy_add_event(e);
-    delay_ms(100);
-}
 
 void example_patches() {
     struct event e = amy_default_event();
@@ -197,45 +178,25 @@ void bleep(uint32_t start) {
     amy_add_event(e);
 }
 
-void example_fm(uint32_t start) {
-    // Play a few notes in FM
+
+void example_multimbral_fm(int64_t start) {
     struct event e = amy_default_event();
+    e.reset_osc = AMY_OSCS + 10;
     e.time = start;
-    e.velocity = 1;
-    e.wave = ALGO;
-    e.patch = 15;
-    e.midi_note = 60;
     amy_add_event(e);
 
-    e.time = start + 500;
-    e.osc += 9; // remember that an FM patch takes up 9 oscillators
-    e.midi_note = 64;
-    amy_add_event(e);
-    
-    e.time = start + 1000;
-    e.osc += 9;
-    e.midi_note = 68;
-    amy_add_event(e);
-}
-
-void example_multimbral_fm(int64_t start, int start_osc) {
-    struct event e = amy_default_event();
-    int osc_inc;
-    e.time = start;
-    e.osc = start_osc;
-    e.wave = ALGO;
-    e.patch = 20;
-    osc_inc = 9;
-    int notes[] = {60, 70, 64, 68, 72, 82};
+    e = amy_default_event();
+    char * voices[] = {"0","1","2","3","4","5","6"};
+    int notes[] = {60, 70, 64, 68, 72, 82, 58};
     e.velocity = 0.2;
-
+    e.time = start+100;
+    e.load_patch = 128 + 32; // start at DX7 patch 32;
     for (unsigned int i = 0; i < sizeof(notes) / sizeof(int); ++i) {
         e.midi_note = notes[i];
+        strcpy(e.voices, voices[i]);
+        e.load_patch = e.load_patch + 1;
         e.pan_coefs[0] = (i%2);
-        //e.pan = 0.5 + 0.5 * ((2 * (i %2)) - 1);
-        e.patch++;
         amy_add_event(e);
-        e.osc += osc_inc;
         e.time += 1000;
     }
 }

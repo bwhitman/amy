@@ -23,6 +23,9 @@ typedef struct {
 #include "amy_config.h"
 
 // Rest of amy setup
+#define MAX_VOICE 16
+#define MAX_VOICES 8
+
 #define SAMPLE_MAX 32767
 #define MAX_ALGO_OPS 6 
 #define MAX_BREAKPOINTS 8
@@ -146,7 +149,9 @@ enum params{
     BP_END=BP_START + (MAX_BREAKPOINT_SETS * MAX_BREAKPOINTS * 2), // 139
     CLONE_OSC,                           // 140
     RESET_OSC,                           // 141
-    NO_PARAM                             // 142
+    LOAD_PATCH,                          // 142
+    VOICES,                              // 143
+    NO_PARAM=VOICES+MAX_VOICES           // 151
 };
 
 #ifdef AMY_DEBUG
@@ -295,6 +300,8 @@ struct synthinfo {
     float pan_coefs[NUM_COMBO_COEFS];
     float feedback;
     uint8_t status;
+    uint16_t load_patch;
+    uint8_t voices[MAX_VOICES];
     float velocity;
     PHASOR phase;
     float detune;
@@ -389,6 +396,7 @@ void config_reverb(float level, float liveness, float damping, float xover_hz);
 void config_chorus(float level, int max_delay, float lfo_freq, float depth);
 void osc_note_on(uint16_t osc, float initial_freq);
 void chorus_note_on(float initial_freq);
+int parse_int_list_message(char *message, int16_t *vals, int max_num_vals) ;
 
 SAMPLE log2_lut(SAMPLE x);
 SAMPLE exp2_lut(SAMPLE x);
@@ -459,8 +467,11 @@ extern SAMPLE render_algo(SAMPLE * buf, uint16_t osc, uint8_t core) ;
 extern SAMPLE render_partial(SAMPLE *buf, uint16_t osc) ;
 extern void partials_note_on(uint16_t osc);
 extern void partials_note_off(uint16_t osc);
-extern void patches_load_patch(struct event e); 
-extern void patches_event_has_voices(struct event e);
+//extern void patches_load_patch(struct event e); 
+//extern void patches_event_has_voices(struct event e);
+extern void patches_load_patch(uint16_t patch, uint8_t voice);
+extern void patches_assign_voices(uint8_t * voices, uint8_t num_voices, uint16_t patch);
+
 extern void patches_reset();
 
 extern SAMPLE render_partials(SAMPLE *buf, uint16_t osc);

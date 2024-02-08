@@ -388,31 +388,43 @@ void amy_add_event_internal(struct event e, uint16_t base_osc) {
     AMY_PROFILE_START(AMY_ADD_EVENT)
     struct delta d;
     
-
     // Synth defaults if not set, these are required for the delta struct
     if(AMY_IS_UNSET(e.osc)) { e.osc = 0; } 
     if(AMY_IS_UNSET(e.time)) { e.time = 0; } 
 
     // First, adapt the osc in this event with base_osc offsets for voices
     e.osc += base_osc;
+    d.time = e.time;
+    d.osc = e.osc;
 
+    // Add voices first
+    if(e.voices[0] != 0) {
+        int16_t voices[MAX_VOICES];
+        uint8_t num_voices = parse_int_list_message(e.voices, voices, MAX_VOICES);
+        for(uint8_t i=0;i<num_voices;i++) {
+            d.param = VOICES+i;
+            d.data = *(uint32_t *)&voices[i];
+            add_delta_to_queue(d);
+        }
+    }
+    /*
     // Voices / patches gets set up here 
-    // you must set both voices & load_patch together to load a patch 
     if(e.voices[0] != 0 && AMY_IS_SET(e.load_patch)) {
+        // voices and load_patch were set. Load the patch first (to set the osc/voice lookup) and then fill in the rest. exit this function.
         patches_load_patch(e);
         patches_event_has_voices(e);
         goto end;
     } else {
+        // No load patch, just voices param. Exit this function and call patches_event_has_voices()
         if(e.voices[0] != 0) {
             patches_event_has_voices(e);
             goto end;
         }
     }
+    */
 
-
-    d.time = e.time;
-    d.osc = e.osc;
     // Everything else only added to queue if set
+    if(AMY_IS_SET(e.load_patch)) {d.param=LOAD_PATCH; d.data = *(uint32_t *)&e.load_patch; add_delta_to_queue(d);  }
     if(AMY_IS_SET(e.wave)) { d.param=WAVE; d.data = *(uint32_t *)&e.wave; add_delta_to_queue(d); }
     if(AMY_IS_SET(e.patch)) { d.param=PATCH; d.data = *(uint32_t *)&e.patch; add_delta_to_queue(d); }
     if(AMY_IS_SET(e.midi_note)) { d.param=MIDI_NOTE; d.data = *(uint32_t *)&e.midi_note; add_delta_to_queue(d); }
@@ -486,7 +498,6 @@ void amy_add_event_internal(struct event e, uint16_t base_osc) {
 
     // add this last -- this is a trigger, that if sent alongside osc setup parameters, you want to run after those
     if(AMY_IS_SET(e.velocity)) {  d.param=VELOCITY; d.data = *(uint32_t *)&e.velocity; add_delta_to_queue(d); }
-end:
     message_counter++;
     AMY_PROFILE_STOP(AMY_ADD_EVENT)
 
@@ -556,6 +567,7 @@ void reset_osc(uint16_t i ) {
     synth[i].wave = SINE;
     msynth[i].last_duty = 0.5f;
     AMY_UNSET(synth[i].patch);
+    AMY_UNSET(synth[i].load_patch);
     AMY_UNSET(synth[i].midi_note);
     for (int j = 0; j < NUM_COMBO_COEFS; ++j)
         synth[i].amp_coefs[j] = 0;
@@ -593,6 +605,7 @@ void reset_osc(uint16_t i ) {
     synth[i].mod_value = F2S(0);
     synth[i].substep = 0;
     synth[i].status = OFF;
+    AMY_UNSET(synth[i].load_patch);
     AMY_UNSET(synth[i].chained_osc);
     AMY_UNSET(synth[i].mod_source);
     synth[i].mod_target = 0;
@@ -608,6 +621,7 @@ void reset_osc(uint16_t i ) {
     synth[i].last_amp = 0;
     synth[i].dc_offset = 0;
     synth[i].algorithm = 0;
+    for(uint8_t j=0;j<MAX_VOICES;j++) AMY_UNSET(synth[i].voices[j]);
     for(uint8_t j=0;j<MAX_ALGO_OPS;j++) AMY_UNSET(synth[i].algo_source[j]);
     for(uint8_t j=0;j<MAX_BREAKPOINT_SETS;j++) {
         for(uint8_t k=0;k<MAX_BREAKPOINTS;k++) {
@@ -842,6 +856,12 @@ void play_event(struct delta d) {
     }
     if(d.param == PHASE) synth[d.osc].phase = *(PHASOR *)&d.data;  // PHASOR
     if(d.param == PATCH) synth[d.osc].patch = *(uint16_t *)&d.data;
+    if(d.param == LOAD_PATCH) {
+        uint16_t p = *(uint16_t *)&d.data;
+        // needs voices str, patch number
+        // call this per voice .. maybe above
+        //patches_load_patch()
+    }
     if(d.param == FEEDBACK) synth[d.osc].feedback = *(float *)&d.data;
 
     if(d.param >= AMP && d.param < AMP + NUM_COMBO_COEFS)
