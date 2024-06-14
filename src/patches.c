@@ -35,7 +35,7 @@ void patches_reset() {
         AMY_UNSET(osc_to_voice[i]);
     }
     for(uint8_t i=0;i<MEMORY_PATCHES;i++) {
-        if(memory_patch[i] != NULL) free(memory_patch[i]);
+        if(memory_patch[i] != NULL) { free(memory_patch[i]); memory_patch[i] = NULL; }
         memory_patch_oscs[i] = 0; 
     }
 }
@@ -60,7 +60,7 @@ void patches_store_patch(char * message) {
         }
     }
     if(memory_patch[patch_number-1024] != NULL) free(memory_patch[patch_number-1024]);
-    memory_patch[patch_number-1024] = malloc(strlen(patch));
+    memory_patch[patch_number-1024] = malloc(strlen(patch) + 1);
     memory_patch_oscs[patch_number-1024] = max_osc + 1;
     strcpy(memory_patch[patch_number-1024], patch);
 }
